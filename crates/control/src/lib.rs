@@ -46,6 +46,8 @@ pub enum Request {
     Signals {
         n: usize,
     },
+    /// Today's trades, open and closed, oldest first.
+    Trades,
     Context,
     Plan,
     /// Raw JSON of a submitted plan.
@@ -193,6 +195,10 @@ pub fn router(handle: Handle, token: String) -> Router {
             get(|State(a): State<App>, h: HeaderMap, Query(q): Query<NQ>| async move {
                 call(&a, &h, Request::Signals { n: q.n.min(500) }).await
             }),
+        )
+        .route(
+            "/trades",
+            get(|State(a): State<App>, h: HeaderMap| async move { call(&a, &h, Request::Trades).await }),
         )
         .route(
             "/context",

@@ -22,7 +22,7 @@ use saarthi_broker::backtest::CostModel;
 use saarthi_broker::{Broker, Paper};
 use saarthi_control::{Reply, Request};
 use saarthi_core::{Bar, IST, Instrument, MarketClock, Phase, Price, Side, Tick, Ts};
-use saarthi_oms::{Intent, Oms, OmsConfig, OmsEvent, Severity, TradeState};
+use saarthi_oms::{Intent, Oms, OmsConfig, OmsEvent, Severity, Trade, TradeState};
 use saarthi_plan::{Context as PlanCtx, EffectivePlan, Plan, Verdict};
 use saarthi_risk::{Book, Breach, EntryProposal, HaltReason, OrderThrottle, RiskGuard, RiskLimits, RiskState};
 use saarthi_store::Db;
@@ -847,6 +847,25 @@ impl<B: Broker + ?Sized> Engine<B> {
             Request::Signals { n } => {
                 let v: Vec<_> = self.signals.iter().rev().take(n).collect();
                 serde_json::json!({ "signals": v })
+            }
+            Request::Trades => {
+                let all: Vec<Trade> = self.oms.db().trades_on(self.oms.day()).map_err(|e| (500, e.to_string()))?;
+                let v: Vec<_> = all
+                    .iter()
+                    .map(|t| {
+                        let l = if t.open_qty() > 0 { ltp(&t.token) } else { None };
+                        serde_json::json!({
+                            "trade_id": t.id, "symbol": t.symbol, "strategy": t.strategy,
+                            "side": if t.side == Side::Buy { "long" } else { "short" },
+                            "state": t.state.as_str(), "qty": t.entry_qty, "open_qty": t.open_qty(),
+                            "avg_entry": t.avg_entry(), "avg_exit": t.avg_exit(),
+                            "stop": t.stop, "target": t.target, "reason": t.reason,
+                            "exit_reason": t.exit_reason, "charges": t.charges, "net": t.net(l),
+                            "opened_at": t.opened_at, "closed_at": t.closed_at,
+                        })
+                    })
+                    .collect();
+                serde_json::json!({ "trades": v })
             }
             Request::Context => {
                 let indices: Vec<_> = self
