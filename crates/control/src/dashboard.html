@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saarthi Desk</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #14171c; --muted: #6a7280; --line: #e3e6eb;
+  --up: #0f8a5f; --down: #c8372d; --accent: #3557d4; --warn: #b7791f; --chip: #eef1f6;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216; --panel: #171b21; --ink: #e7eaee; --muted: #8b94a3; --line: #262c35;
+    --up: #34c38f; --down: #f0645a; --accent: #7b96ff; --warn: #e0a84a; --chip: #212732;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+.chip { background: var(--chip); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.chip.ok { color: var(--up); } .chip.bad { color: var(--down); } .chip.warn { color: var(--warn); }
+.clock { font: 600 15px var(--mono); }
+.spacer { flex: 1; }
+button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+button.danger { border-color: var(--down); color: var(--down); }
+button:disabled { opacity: .5; cursor: default; }
+main { padding: 16px 20px 40px; display: grid; gap: 16px; max-width: 1400px; margin: 0 auto; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi, .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.kpi { padding: 12px 14px; }
+.kpi .l { color: var(--muted); font-size: 12px; }
+.kpi .v { font: 600 22px var(--mono); margin-top: 2px; }
+.kpi .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } main { padding: 12px 16px 32px; } }
+.card { padding: 14px 16px; min-width: 0; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td.n, th.n { text-align: right; font-family: var(--mono); }
+tr.click { cursor: pointer; } tr.click:hover td { background: var(--chip); }
+.up { color: var(--up); } .down { color: var(--down); } .muted { color: var(--muted); }
+.empty { color: var(--muted); padding: 10px 0; }
+svg text { fill: var(--muted); font: 11px var(--mono); }
+.plan dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0 0 10px; }
+.plan dt { color: var(--muted); } .plan dd { margin: 0; }
+.rationale { background: var(--chip); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; }
+.clamps { margin: 8px 0 0; padding-left: 18px; color: var(--warn); font-size: 12px; }
+.history { margin-top: 10px; font-size: 12px; color: var(--muted); max-height: 160px; overflow: auto; }
+.history div { padding: 3px 0; border-top: 1px solid var(--line); }
+.banner { background: var(--chip); border-left: 3px solid var(--warn); padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+#login { max-width: 420px; margin: 80px auto; }
+#login input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 14px var(--mono); margin: 8px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Saarthi Desk</h1>
+  <span id="mode" class="chip">paper</span>
+  <span class="clock" id="clock">--:--:--</span>
+  <span id="phase" class="chip">—</span>
+  <span id="feed" class="chip">feed —</span>
+  <span id="planchip" class="chip">plan —</span>
+  <span class="spacer"></span>
+  <span id="conn" class="chip">connecting…</span>
+  <button id="halt" class="danger">Halt</button>
+  <button id="resume">Resume</button>
+</header>
+
+<div id="login" class="card" hidden>
+  <h2>Control API token</h2>
+  <p class="muted">The engine prints a dashboard link with the token when it starts. Or paste <code>CONTROL_API_TOKEN</code> here.</p>
+  <input id="tok" type="password" autocomplete="off" placeholder="token">
+  <button id="tokgo">Connect</button>
+</div>
+
+<main id="app" hidden>
+  <div id="simnote" class="banner" hidden>Simulated market: the prices are generated, not real. This shows how the engine and the strategist behave, not whether the strategies make money.</div>
+  <section class="kpis">
+    <div class="kpi"><div class="l">Day P&amp;L (net)</div><div class="v" id="k-pnl">—</div><div class="s" id="k-pnl-s"></div></div>
+    <div class="kpi"><div class="l">Trades</div><div class="v" id="k-trades">—</div><div class="s" id="k-trades-s"></div></div>
+    <div class="kpi"><div class="l">Win rate</div><div class="v" id="k-win">—</div><div class="s" id="k-win-s"></div></div>
+    <div class="kpi"><div class="l">Charges</div><div class="v" id="k-chg">—</div><div class="s">brokerage, STT, fees, GST</div></div>
+    <div class="kpi"><div class="l">Daily loss budget used</div><div class="v" id="k-loss">—</div><div class="s" id="k-loss-s"></div></div>
+    <div class="kpi"><div class="l">Open positions</div><div class="v" id="k-open">—</div><div class="s" id="k-open-s"></div></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card"><h2>Day P&amp;L</h2><div id="equity"></div></div>
+    <div class="card plan"><h2>AI strategist plan</h2><div id="plan"></div></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card"><h2>Open positions</h2><div class="scroll" id="positions"></div></div>
+    <div class="card"><h2 id="chart-title">Chart</h2><div id="chart" class="empty">Click a position, trade or signal to chart it.</div></div>
+  </section>
+
+  <section class="card"><h2>Trades today</h2><div class="scroll" id="trades"></div></section>
+  <section class="card"><h2>Signals and risk decisions</h2><div class="scroll" id="signals"></div></section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { sessionStorage.setItem(k, v); } catch { /* private mode */ } },
+  };
+  const fromHash = new URLSearchParams(location.hash.slice(1)).get("token");
+  if (fromHash) { store.set("saarthi_token", fromHash); history.replaceState(null, "", location.pathname); }
+  let token = store.get("saarthi_token") || "";
+  let chartSymbol = null;
+  let lastPlanVersion = null;
+  const planHistory = [];
+
+  const rs = (paise, sign) => {
+    if (paise === null || paise === undefined) return "—";
+    const v = paise / 100;
+    const s = Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (v < 0 ? "−" : sign && v > 0 ? "+" : "") + "₹" + s;
+  };
+  const px = (paise) => paise == null ? "—" : (paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const cls = (v) => v > 0 ? "up" : v < 0 ? "down" : "";
+  const hhmm = (ts) => ts ? new Date(ts).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false }) : "—";
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  async function api(path, opts = {}) {
+    const r = await fetch(path, { ...opts, headers: { Authorization: "Bearer " + token, ...(opts.headers || {}) } });
+    if (r.status === 401) { showLogin(); throw new Error("unauthorised"); }
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(body.error || r.statusText);
+    return body;
+  }
+
+  function showLogin() { $("app").hidden = true; $("login").hidden = false; }
+  $("tokgo").onclick = () => { token = $("tok").value.trim(); store.set("saarthi_token", token); start(); };
+  $("halt").onclick = async () => {
+    const reason = prompt("Halt reason", "manual halt from dashboard");
+    if (reason === null) return;
+    try { await api("/halt", { method: "POST", body: JSON.stringify({ reason }) }); tick(); } catch (e) { alert(e.message); }
+  };
+  $("resume").onclick = async () => { try { await api("/resume", { method: "POST" }); tick(); } catch (e) { alert(e.message); } };
+
+  function table(cols, rows, onclick) {
+    if (!rows.length) return '<div class="empty">None yet.</div>';
+    const head = cols.map((c) => `<th class="${c.n ? "n" : ""}">${c.h}</th>`).join("");
+    const body = rows.map((r, i) => `<tr data-i="${i}" class="${onclick ? "click" : ""}">` +
+      cols.map((c) => `<td class="${c.n ? "n" : ""} ${c.c ? c.c(r) : ""}">${c.f(r)}</td>`).join("") + "</tr>").join("");
+    return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  }
+  function bindRows(el, rows, onclick) {
+    if (!onclick) return;
+    el.querySelectorAll("tr.click").forEach((tr) => tr.onclick = () => onclick(rows[+tr.dataset.i]));
+  }
+  const pick = (r) => { chartSymbol = r.symbol; drawChart(); };
+
+  function equityChart(trades, dayPnl, now) {
+    const closed = trades.filter((t) => t.closed_at).sort((a, b) => a.closed_at.localeCompare(b.closed_at));
+    const pts = [];
+    const d = now ? now.slice(0, 10) : null;
+    const t0 = d ? Date.parse(d + "T09:15:00+05:30") : null;
+    const t1 = d ? Date.parse(d + "T15:30:00+05:30") : null;
+    if (!t0) return '<div class="empty">Waiting for the engine.</div>';
+    let cum = 0;
+    pts.push([t0, 0]);
+    for (const t of closed) { cum += t.net; pts.push([Date.parse(t.closed_at), cum]); }
+    const nowT = Math.min(Math.max(Date.parse(now), t0), t1);
+    pts.push([nowT, dayPnl]);
+    const W = 640, H = 220, L = 70, R = 10, T = 10, B = 24;
+    const vals = pts.map((p) => p[1]);
+    let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+    if (hi - lo < 100000) { hi += 50000; lo -= 50000; }
+    const x = (t) => L + (t - t0) / (t1 - t0) * (W - L - R);
+    const y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+    let path = "";
+    pts.forEach(([t, v], i) => {
+      if (i === 0) path += `M${x(t)},${y(v)}`;
+      else { path += `H${x(t)}V${y(v)}`; }
+    });
+    const color = dayPnl >= 0 ? "var(--up)" : "var(--down)";
+    const ticks = [];
+    for (let h = 10; h <= 15; h++) {
+      const t = Date.parse(`${d}T${String(h).padStart(2, "0")}:00:00+05:30`);
+      ticks.push(`<line x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H - B}" stroke="var(--line)"/><text x="${x(t)}" y="${H - 6}" text-anchor="middle">${h}:00</text>`);
+    }
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Day P&L over time">
+      ${ticks.join("")}
+      <line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--muted)" stroke-dasharray="3 3"/>
+      <text x="${L - 6}" y="${y(hi) + 4}" text-anchor="end">${rs(hi)}</text>
+      <text x="${L - 6}" y="${y(lo) + 4}" text-anchor="end">${rs(lo)}</text>
+      <text x="${L - 6}" y="${y(0) + 4}" text-anchor="end">₹0</text>
+      <path d="${path}" fill="none" stroke="${color}" stroke-width="2"/>
+      <circle cx="${x(nowT)}" cy="${y(dayPnl)}" r="3.5" fill="${color}"/>
+    </svg>`;
+  }
+
+  async function drawChart() {
+    if (!chartSymbol) return;
+    let b;
+    try { b = await api("/bars?symbol=" + encodeURIComponent(chartSymbol) + "&n=80"); } catch (e) { $("chart").innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+    $("chart-title").textContent = `${chartSymbol} · ${b.tf}`;
+    const bars = b.bars || [];
+    if (!bars.length) { $("chart").innerHTML = '<div class="empty">No bars yet today.</div>'; return; }
+    const pos = (window.__positions || []).find((p) => p.symbol === chartSymbol);
+    const levels = [];
+    if (pos) {
+      levels.push(["entry", pos.avg_entry, "var(--accent)"], ["stop", pos.stop, "var(--down)"]);
+      if (pos.target) levels.push(["target", pos.target, "var(--up)"]);
+    }
+    if (b.vwap) levels.push(["vwap", Math.round(b.vwap), "var(--warn)"]);
+    const W = 560, H = 240, L = 8, R = 64, T = 8, B = 20;
+    let lo = Math.min(...bars.map((x) => x.low), ...levels.map((l) => l[1]).filter(Boolean));
+    let hi = Math.max(...bars.map((x) => x.high), ...levels.map((l) => l[1]).filter(Boolean));
+    if (hi === lo) { hi += 100; lo -= 100; }
+    const step = (W - L - R) / bars.length;
+    const y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+    const candles = bars.map((k, i) => {
+      const cx = L + step * (i + 0.5), up = k.close >= k.open;
+      const c = up ? "var(--up)" : "var(--down)";
+      const top = y(Math.max(k.open, k.close)), h = Math.max(1, Math.abs(y(k.open) - y(k.close)));
+      return `<line x1="${cx}" x2="${cx}" y1="${y(k.high)}" y2="${y(k.low)}" stroke="${c}"/>` +
+        `<rect x="${cx - step * 0.35}" y="${top}" width="${Math.max(1, step * 0.7)}" height="${h}" fill="${c}"/>`;
+    }).join("");
+    const lv = levels.filter((l) => l[1]).map(([n, v, c]) =>
+      `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${c}" stroke-dasharray="4 3"/>` +
+      `<text x="${W - R + 4}" y="${y(v) + 4}">${n} ${px(v)}</text>`).join("");
+    const first = hhmm(bars[0].ts), last = hhmm(bars[bars.length - 1].ts);
+    $("chart").className = "";
+    $("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(chartSymbol)} candles">${candles}${lv}
+      <text x="${L}" y="${H - 4}">${first.slice(0, 5)}</text><text x="${W - R}" y="${H - 4}" text-anchor="end">${last.slice(0, 5)}</text></svg>
+      <div class="muted" style="font-size:12px">LTP ${px(b.ltp)} · RSI ${b.rsi ? b.rsi.toFixed(1) : "—"} · ATR ${b.atr ? px(Math.round(b.atr)) : "—"}</div>`;
+  }
+
+  function renderPlan(p, st) {
+    const plan = p.plan || {};
+    const isDefault = p.is_default;
+    if (plan.version !== lastPlanVersion) {
+      lastPlanVersion = plan.version;
+      planHistory.unshift({ at: st.now, v: plan.version, def: isDefault, bias: plan.market_bias, regime: plan.regime, mult: plan.global_risk_multiplier });
+    }
+    const wl = (plan.watchlist || []).map((w) => `${esc(w.symbol)} <span class="muted">(${w.strategies.join(", ")}; ${w.direction.replace("_", " ")}; ${w.max_risk_pct}%)</span>`);
+    $("plan").innerHTML = `
+      ${isDefault ? '<div class="banner" style="margin-bottom:10px">Default plan in force: the AI has not submitted one (no API key, not run yet, or it declined). Strategies trade at half risk.</div>' : ""}
+      <dl>
+        <dt>Version</dt><dd>${plan.version}${isDefault ? " (default)" : ""}</dd>
+        <dt>Bias / regime</dt><dd>${esc(plan.market_bias)} / ${esc(plan.regime)}</dd>
+        <dt>Risk multiplier</dt><dd>${plan.global_risk_multiplier}×</dd>
+        <dt>Valid until</dt><dd>${hhmm(p.valid_until)}</dd>
+        <dt>Paused</dt><dd>${(plan.paused_strategies || []).join(", ") || "none"}</dd>
+        <dt>Watchlist</dt><dd>${wl.length ? wl.join("<br>") : "all symbols"}</dd>
+      </dl>
+      <div class="rationale">${esc(plan.rationale || "")}</div>
+      ${(p.changes || []).length ? `<ul class="clamps">${p.changes.map((c) => `<li>clamped: ${esc(c)}</li>`).join("")}</ul>` : ""}
+      <div class="history">${planHistory.map((h) => `<div>${hhmm(h.at)} · v${h.v}${h.def ? " default" : ""} · ${esc(h.bias)}/${esc(h.regime)} · ${h.mult}×</div>`).join("")}</div>`;
+  }
+
+  async function tick() {
+    let st, pnl, pos, tr, sig, plan;
+    try {
+      [st, pnl, pos, tr, sig, plan] = await Promise.all([
+        api("/state"), api("/pnl"), api("/positions"), api("/trades"), api("/signals?n=60"), api("/plan"),
+      ]);
+    } catch (e) {
+      $("conn").textContent = "engine offline"; $("conn").className = "chip bad";
+      return;
+    }
+    $("conn").textContent = "live"; $("conn").className = "chip ok";
+    $("mode").textContent = st.simulated ? `simulation ×${st.speed}` : "paper";
+    $("mode").className = st.simulated ? "chip warn" : "chip";
+    $("simnote").hidden = !st.simulated;
+    $("clock").textContent = hhmm(st.now) + " IST";
+    $("phase").textContent = st.halted ? "HALTED: " + st.halted : st.phase + (st.entries_open ? " · entries open" : " · no new entries");
+    $("phase").className = "chip " + (st.halted ? "bad" : st.entries_open ? "ok" : "");
+    $("feed").textContent = st.feed_ok ? "feed ok" : "feed stale";
+    $("feed").className = "chip " + (st.feed_ok ? "ok" : "bad");
+    const ai = st.strategist ? ` · AI: ${st.strategist}` : "";
+    $("planchip").textContent = (st.plan_is_default ? "default plan" : `AI plan v${st.plan_version}`) + ai;
+    $("planchip").className = "chip " + (st.plan_is_default ? "warn" : "ok");
+    $("halt").disabled = !!st.halted; $("resume").disabled = !st.halted;
+
+    $("k-pnl").textContent = rs(pnl.day_pnl, true); $("k-pnl").className = "v " + cls(pnl.day_pnl);
+    $("k-pnl-s").textContent = `realised ${rs(pnl.net, true)} · capital ${rs(st.capital)}`;
+    $("k-trades").textContent = pnl.trades;
+    $("k-trades-s").textContent = `${pnl.trades_today}/${pnl.max_trades_per_day} entries · ${pnl.rejections} rejected`;
+    $("k-win").textContent = pnl.wins + pnl.losses ? Math.round(pnl.win_rate * 100) + "%" : "—";
+    $("k-win-s").textContent = `${pnl.wins}W / ${pnl.losses}L · ${pnl.consecutive_losses} losing streak`;
+    $("k-chg").textContent = rs(pnl.charges);
+    $("k-loss").textContent = Math.round(pnl.loss_limit_used * 100) + "%";
+    $("k-loss").className = "v " + (pnl.loss_limit_used > 0.5 ? "down" : "");
+    $("k-loss-s").textContent = `limit ${rs(pnl.daily_loss_limit)} · worst ${rs(pnl.worst_pnl, true)}`;
+    const positions = pos.positions || [];
+    window.__positions = positions;
+    $("k-open").textContent = positions.length;
+    $("k-open-s").textContent = st.square_off_done ? "squared off" : `${st.symbols} symbols watched`;
+
+    $("equity").innerHTML = equityChart(tr.trades || [], pnl.day_pnl, st.now);
+    renderPlan(plan, st);
+
+    const pc = [
+      { h: "Symbol", f: (r) => esc(r.symbol) }, { h: "Strategy", f: (r) => esc(r.strategy) },
+      { h: "Side", f: (r) => r.side, c: (r) => r.side === "long" ? "up" : "down" },
+      { h: "Qty", n: 1, f: (r) => r.qty }, { h: "Entry", n: 1, f: (r) => px(r.avg_entry) },
+      { h: "LTP", n: 1, f: (r) => px(r.ltp) }, { h: "Stop", n: 1, f: (r) => px(r.stop) },
+      { h: "Target", n: 1, f: (r) => px(r.target) }, { h: "Net", n: 1, f: (r) => rs(r.net, true), c: (r) => cls(r.net) },
+    ];
+    $("positions").innerHTML = table(pc, positions, pick); bindRows($("positions"), positions, pick);
+
+    const trades = (tr.trades || []).slice().reverse();
+    const tc = [
+      { h: "Opened", f: (r) => hhmm(r.opened_at) }, { h: "Closed", f: (r) => hhmm(r.closed_at) },
+      { h: "Symbol", f: (r) => esc(r.symbol) }, { h: "Strategy", f: (r) => esc(r.strategy) },
+      { h: "Side", f: (r) => r.side, c: (r) => r.side === "long" ? "up" : "down" },
+      { h: "Qty", n: 1, f: (r) => r.qty }, { h: "Entry", n: 1, f: (r) => px(r.avg_entry) },
+      { h: "Exit", n: 1, f: (r) => px(r.avg_exit) }, { h: "Charges", n: 1, f: (r) => rs(r.charges) },
+      { h: "Net", n: 1, f: (r) => rs(r.net, true), c: (r) => cls(r.net) },
+      { h: "Exit reason", f: (r) => esc(r.exit_reason || r.state) },
+    ];
+    $("trades").innerHTML = table(tc, trades, pick); bindRows($("trades"), trades, pick);
+
+    const signals = sig.signals || [];
+    const sc = [
+      { h: "Time", f: (r) => hhmm(r.ts) }, { h: "Symbol", f: (r) => esc(r.symbol) }, { h: "Strategy", f: (r) => esc(r.strategy) },
+      { h: "Side", f: (r) => r.side }, { h: "Entry", n: 1, f: (r) => px(r.entry) }, { h: "Stop", n: 1, f: (r) => px(r.stop) },
+      { h: "Qty", n: 1, f: (r) => r.qty ?? "—" },
+      { h: "Decision", f: (r) => esc(r.decision), c: (r) => r.decision === "accepted" ? "up" : "muted" },
+      { h: "Why", f: (r) => esc(r.reason) },
+    ];
+    $("signals").innerHTML = table(sc, signals, pick); bindRows($("signals"), signals, pick);
+    if (chartSymbol) drawChart();
+  }
+
+  let timer = null;
+  function start() {
+    if (!token) { showLogin(); return; }
+    $("login").hidden = true; $("app").hidden = false;
+    tick();
+    clearInterval(timer);
+    timer = setInterval(tick, 1500);
+  }
+  start();
+})();
+</script>
+</body>
+</html>

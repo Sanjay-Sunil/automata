@@ -9,12 +9,14 @@
 //!
 //! | Method | Path | Does |
 //! |---|---|---|
+//! | GET | `/` | the dashboard page, no auth (its data calls carry the token) |
 //! | GET | `/health` | liveness, no auth |
 //! | GET | `/state` | phase, health, feed, plan version, halts |
 //! | GET | `/positions` | open trades with stops, unrealized P&L |
 //! | GET | `/pnl` | day P&L, trades, win rate, drawdown, risk used |
 //! | GET | `/bars?symbol=&n=` | recent bars + indicator snapshot |
 //! | GET | `/signals?n=` | recent signals and what risk decided |
+//! | GET | `/trades` | today's trades, open and closed |
 //! | GET | `/context` | index levels, VIX, breadth |
 //! | GET | `/plan` | the plan in force |
 //! | POST | `/plan` | submit a plan → accepted with clamp diff, or 422 |
@@ -27,7 +29,7 @@ use std::time::Duration;
 use axum::Router;
 use axum::extract::{Query, State};
 use axum::http::{HeaderMap, StatusCode};
-use axum::response::{IntoResponse, Response};
+use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -158,9 +160,13 @@ struct HaltBody {
     reason: String,
 }
 
+/// A static page that polls the endpoints below with the token it is given.
+const DASHBOARD: &str = include_str!("dashboard.html");
+
 pub fn router(handle: Handle, token: String) -> Router {
     let app = App { handle, token };
     Router::new()
+        .route("/", get(|| async { Html(DASHBOARD) }))
         .route("/health", get(|| async { axum::Json(json!({"ok": true})) }))
         .route(
             "/state",
@@ -289,6 +295,22 @@ mod tests {
         assert_eq!(r.status(), 200);
         let r = c.get(format!("{base}/state")).send().await.unwrap();
         assert_eq!(r.status(), 401);
+        // The page needs no token; the data it polls does.
+        let r = c.get(format!("{base}/")).send().await.unwrap();
+        assert_eq!(r.status(), 200);
+        assert!(r.text().await.unwrap().contains("Saarthi Desk"));
+        let r = c.get(format!("{base}/trades")).send().await.unwrap();
+        assert_eq!(r.status(), 401);
+        let r: Value = c
+            .get(format!("{base}/trades"))
+            .bearer_auth(TOKEN)
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        assert_eq!(r["req"], "Trades");
         let r = c
             .get(format!("{base}/state"))
             .bearer_auth("0123456789abcdef0124")
