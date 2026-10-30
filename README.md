@@ -179,6 +179,35 @@ are set in `secrets.env`, to Telegram.
 15:10, checked by `engine exit-check --days 5` (a day with a restart does not
 count).
 
+## Simulation and dashboard
+
+No credentials or market hours needed:
+
+```bash
+cargo run --release -p engine -- sim                 # a generated day at 20× (~20 min); prints the dashboard link
+cargo run --release -p engine -- sim --speed 60 --symbols 30 --seed 7
+cargo run --release -p engine -- sim --ai off        # without the strategist
+```
+
+`engine sim` generates 30 days of 5m history and one session of ticks for
+`SIMnnn-EQ` symbols (trend, range and volatile days planted at random),
+then runs the real engine, risk guard, OMS and paper broker over it on a
+simulated clock. With `ANTHROPIC_API_KEY` set (and `uv` installed) it runs
+the strategist too: the clock waits for the pre-market plan, reviews run
+every 15 simulated minutes and the EOD journal is written after the close.
+The strategist is told it is a simulation. Everything lives in `data/sim/`,
+which is wiped on every start; the strategist's output goes to
+`data/sim/strategist.log`. **The prices are synthetic: a simulated day shows
+how the system behaves, never whether it makes money.**
+
+The dashboard (`http://127.0.0.1:7070/`, served by the control API) shows
+the day's P&L curve, open positions with stops and targets, every trade with
+its charges and exit reason, every signal with the risk guard's decision,
+the strategist's plan with anything the engine clamped, and Halt/Resume
+buttons. It works the same during `engine run` (open
+`http://127.0.0.1:7070/#token=<CONTROL_API_TOKEN>`; on a VPS, reach it
+through `ssh -L 7070:127.0.0.1:7070`, never by exposing the port).
+
 ## Claude strategist (M4)
 
 ```bash
