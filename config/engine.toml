@@ -102,6 +102,6 @@ server_fallbacks = true
 # effort = "high"
 # timeout_secs = 1200
 # [strategist.modes.review]
-# model = "claude-sonnet-5-5"
+# model = "claude-sonnet-5"
 # effort = "low"
 # timeout_secs = 90

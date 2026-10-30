@@ -25,7 +25,7 @@ If Claude is unavailable, the engine runs on the last valid plan or the conserva
 ## 2. Runtime
 
 - **SDK:** Anthropic Python SDK (Messages API) with the tool loop in `strategist/saarthi_strategist/runner.py`, headless, invoked by systemd timers. Only the tools below exist: no shell, no file access beyond the journal.
-- **Model:** Claude Opus (`claude-opus-5-5`, high effort) for pre-market and EOD; Claude Sonnet (`claude-sonnet-5-5`, low effort) for the 15-minute reviews and hourly notes. Override per routine in `[strategist.modes.*]`.
+- **Model:** Claude Opus (`claude-opus-5-5`, high effort) for pre-market and EOD; Claude Sonnet (`claude-sonnet-5`, low effort) for the 15-minute reviews and hourly notes. Override per routine in `[strategist.modes.*]`.
 - **Output:** structured JSON validated against `plan.schema.json`. On a validation failure, retry once with the error, then fall back.
 - **Budget:** `[strategist] max_tokens_per_day` in `engine.toml`, tracked in `data/strategist/usage-<date>.json`; when it's exceeded, routines are skipped (the engine keeps running).
 - **Code, not the model, sets** the plan `version` and the default `valid_until` (today's square-off).

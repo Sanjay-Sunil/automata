@@ -44,8 +44,8 @@ class Settings:
         default_factory=lambda: {
             # AGENT.md §2: Opus for the deep routines, a faster model for reviews.
             "premarket": ModeSettings("claude-opus-5-5", "high", 20 * 60, 40),
-            "review": ModeSettings("claude-sonnet-5-5", "low", 90, 8),
-            "hourly": ModeSettings("claude-sonnet-5-5", "low", 90, 6),
+            "review": ModeSettings("claude-sonnet-5", "low", 90, 8),
+            "hourly": ModeSettings("claude-sonnet-5", "low", 90, 6),
             "eod": ModeSettings("claude-opus-5-5", "high", 10 * 60, 30),
         }
     )

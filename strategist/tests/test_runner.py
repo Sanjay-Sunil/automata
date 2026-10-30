@@ -174,7 +174,7 @@ def test_review_without_change_is_ok_and_uses_the_fast_model(tmp_path):
     m = Script(msg("tool_use", use(1, "get_pnl", {})), msg("end_turn", text("No change: on plan.")))
     o = runner.run(session(tmp_path, mode="review", engine=eng), budget(tmp_path), m, NOW)
     assert o.ok and o.text.startswith("No change")
-    assert m.requests[0]["model"] == "claude-sonnet-5-5"
+    assert m.requests[0]["model"] == "claude-sonnet-5"
     assert "web_search" not in {t["name"] for t in m.requests[0]["tools"]}
     assert eng.posted == []
 
