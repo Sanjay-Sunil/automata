@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import tomllib
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -63,9 +64,17 @@ def load(path: Path | None = None) -> Settings:
     """Reads `[strategist]` from engine.toml (missing file or table = defaults)."""
     path = path or Path(os.environ.get("SAARTHI_CONFIG", REPO / "config" / "engine.toml"))
     s = Settings()
-    if not path.exists():
-        return s
-    doc = tomllib.loads(path.read_text())
+    if path.exists():
+        _apply_toml(s, tomllib.loads(path.read_text()))
+    # `engine sim` points the strategist at its generated market.
+    if os.environ.get("SAARTHI_DATA_DIR"):
+        s.data_dir = Path(os.environ["SAARTHI_DATA_DIR"])
+    if os.environ.get("SAARTHI_UNIVERSE"):
+        s.universe_path = Path(os.environ["SAARTHI_UNIVERSE"])
+    return s
+
+
+def _apply_toml(s: Settings, doc: dict) -> None:
     data_dir = doc.get("paths", {}).get("data_dir")
     if data_dir:
         s.data_dir = (REPO / data_dir) if not Path(data_dir).is_absolute() else Path(data_dir)
@@ -86,7 +95,17 @@ def load(path: Path | None = None) -> Settings:
             timeout_secs=int(m.get("timeout_secs", cur.timeout_secs)),
             max_turns=int(m.get("max_turns", cur.max_turns)),
         )
-    return s
+
+
+def simulated() -> bool:
+    """True when `engine sim` started this run (generated market, simulated clock)."""
+    return os.environ.get("SAARTHI_SIMULATION") == "1"
+
+
+def now(tz) -> datetime:
+    """The current time, or the simulated time `engine sim` passes in `SAARTHI_NOW`."""
+    v = os.environ.get("SAARTHI_NOW", "").strip()
+    return datetime.fromisoformat(v).astimezone(tz) if v else datetime.now(tz)
 
 
 def secret(key: str, secrets_file: Path | None = None) -> str | None:

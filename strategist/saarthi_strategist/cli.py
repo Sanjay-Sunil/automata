@@ -11,7 +11,6 @@ import argparse
 import json
 import logging
 import sys
-from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from . import config, planio, runner
@@ -30,10 +29,21 @@ def _client(api_key: str):
     return c.beta.messages.create
 
 
+SIM_NOTE = (
+    "Note: this is a SIMULATION. The engine is paper-trading a generated market (symbols SIMnnn-EQ, "
+    "synthetic prices with planted trend, range and volatile days) on a simulated clock. Real news, "
+    "global cues and web results do not describe these symbols; base the plan on the engine's state, "
+    "bars, signals and the parquet history instead, and say so in the rationale."
+)
+
+
 def _state_note(api: EngineApi | None) -> str:
+    notes = []
+    if config.simulated():
+        notes.append(SIM_NOTE)
     if api is None:
-        return "Note: the engine's control API is not reachable; engine tools will fail."
-    return ""
+        notes.append("Note: the engine's control API is not reachable; engine tools will fail.")
+    return "\n".join(notes)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -57,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     client_code = config.secret("ANGEL_CLIENT_CODE") or "default"
     store = account_store(s, client_code)
     schema = planio.load_schema(s.schema_path)
-    now = datetime.now(IST)
+    now = config.now(IST)
     create = _client(key)
 
     if a.mode == "validity":
