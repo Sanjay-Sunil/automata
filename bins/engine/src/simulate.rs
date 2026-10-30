@@ -161,7 +161,7 @@ pub async fn run(cli: &Cli, mut cfg: Config) -> Result<ExitCode> {
         &clock,
         date,
         *symbols,
-        cfg.engine.warmup_days.max(3),
+        cfg.engine.warmup_days.max(30),
         seed,
         &cfg.engine.index_tokens,
     )?;
