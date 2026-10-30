@@ -287,7 +287,8 @@ svg text { fill: var(--muted); font: 11px var(--mono); }
     $("k-pnl").textContent = rs(pnl.day_pnl, true); $("k-pnl").className = "v " + cls(pnl.day_pnl);
     $("k-pnl-s").textContent = `realised ${rs(pnl.net, true)} · capital ${rs(st.capital)}`;
     $("k-trades").textContent = pnl.trades;
-    $("k-trades-s").textContent = `${pnl.trades_today}/${pnl.max_trades_per_day} entries · ${pnl.rejections} rejected`;
+    const rej = Object.values(pnl.rejections || {}).reduce((a, b) => a + b, 0);
+    $("k-trades-s").textContent = `${pnl.trades_today}/${pnl.max_trades_per_day} entries · ${rej} signals rejected`;
     $("k-win").textContent = pnl.wins + pnl.losses ? Math.round(pnl.win_rate * 100) + "%" : "—";
     $("k-win-s").textContent = `${pnl.wins}W / ${pnl.losses}L · ${pnl.consecutive_losses} losing streak`;
     $("k-chg").textContent = rs(pnl.charges);
