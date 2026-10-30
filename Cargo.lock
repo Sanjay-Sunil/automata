@@ -647,6 +647,7 @@ name = "engine"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "backtest",
  "chrono",
  "clap",
  "dotenvy",

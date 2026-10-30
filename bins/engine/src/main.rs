@@ -3,6 +3,7 @@
 //! ```text
 //! SAARTHI_MODE=paper engine run          # 08:30 → 15:35 under systemd
 //! engine replay --date 2026-10-28        # paper-trade a recorded session offline
+//! engine sim --speed 20                  # paper-trade a generated day, dashboard on :7070
 //! engine status                          # today's trades and P&L
 //! engine halt "reason" / engine resume   # kill switch
 //! engine exit-check --days 5             # M3 exit criterion
@@ -29,6 +30,8 @@ use saarthi_feed::record::read_frames;
 use saarthi_feed::{ExchangeType, FeedAuth, FeedEvent, Mode as FeedMode, decode, market_hours};
 use saarthi_oms::Severity;
 use saarthi_store::Db;
+
+mod simulate;
 
 #[derive(Parser)]
 #[command(
@@ -65,6 +68,34 @@ enum Cmd {
         #[arg(long)]
         out: Option<PathBuf>,
     },
+    /// Paper-trade a generated market day at N× speed, with the dashboard
+    /// and (when ANTHROPIC_API_KEY is set) the Claude strategist. Needs no
+    /// broker login; the prices are synthetic.
+    Sim {
+        /// Simulated seconds per real second (20 runs a day in about 20 minutes).
+        #[arg(long, default_value_t = 20.0)]
+        speed: f64,
+        #[arg(long, default_value_t = 20)]
+        symbols: usize,
+        /// Random seed (default: from the clock, so every run differs).
+        #[arg(long)]
+        seed: Option<u64>,
+        /// Day to simulate (default: today, or the last trading day before it).
+        #[arg(long)]
+        date: Option<NaiveDate>,
+        /// The simulation's data and paper account; wiped at every start.
+        #[arg(long, default_value = "data/sim")]
+        dir: PathBuf,
+        /// Claude strategist: auto (on when ANTHROPIC_API_KEY is set), on, off.
+        #[arg(long, value_enum, default_value_t = AiMode::Auto)]
+        ai: AiMode,
+        /// Runs the strategist: `<cmd> premarket|review|eod`.
+        #[arg(long, default_value = "uv run --project strategist strategist/agent.py")]
+        strategist_cmd: String,
+        /// Exit when the session is over instead of keeping the dashboard up.
+        #[arg(long)]
+        exit: bool,
+    },
     /// Today's (or a day's) summary and live trades.
     Status {
         #[arg(long)]
@@ -88,6 +119,13 @@ enum Cmd {
     /// Boot checks before a session: trading day, disk, clock, secrets.
     /// Exit 0 = go (or not a trading day), 78 = do not trade.
     Preflight,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum AiMode {
+    Auto,
+    On,
+    Off,
 }
 
 #[tokio::main]
@@ -121,6 +159,9 @@ fn account_id(cli: &Cli) -> String {
 
 async fn run(cli: Cli) -> Result<ExitCode> {
     let cfg = Config::load(&cli.config)?;
+    if let Some(Cmd::Sim { .. }) = &cli.cmd {
+        return simulate::run(&cli, cfg).await;
+    }
     let mode = cfg.mode()?;
     let l = load(cfg, cli.data_dir.clone())?;
     let acct = AccountFiles::new(&l.layout, &account_id(&cli), "paper");
@@ -134,6 +175,7 @@ async fn run(cli: Cli) -> Result<ExitCode> {
             Mode::Backtest => bail!("backtests run with the `backtest` binary"),
         },
         Cmd::Preflight => preflight(&cli, &l, &acct).await,
+        Cmd::Sim { .. } => unreachable!("handled above"),
         Cmd::Replay { date, frames, out } => replay(&l, *date, frames.clone(), out.clone()).await,
         Cmd::Status { date } => status(&l, &acct, date.unwrap_or_else(|| MarketClock::ist_date(Utc::now()))),
         Cmd::Halt { reason } => {

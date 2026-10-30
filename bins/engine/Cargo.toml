@@ -19,6 +19,7 @@ saarthi-plan.workspace = true
 saarthi-control.workspace = true
 saarthi-notify.workspace = true
 fetch = { path = "../fetch" }
+backtest = { path = "../backtest" }
 tokio.workspace = true
 reqwest.workspace = true
 serde.workspace = true

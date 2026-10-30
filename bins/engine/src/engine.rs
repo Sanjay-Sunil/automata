@@ -849,7 +849,11 @@ impl<B: Broker + ?Sized> Engine<B> {
                 serde_json::json!({ "signals": v })
             }
             Request::Trades => {
-                let all: Vec<Trade> = self.oms.db().trades_on(self.oms.day()).map_err(|e| (500, e.to_string()))?;
+                let all: Vec<Trade> = self
+                    .oms
+                    .db()
+                    .trades_on(self.oms.day())
+                    .map_err(|e| (500, e.to_string()))?;
                 let v: Vec<_> = all
                     .iter()
                     .map(|t| {

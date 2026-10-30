@@ -4,6 +4,7 @@
 pub mod alerts;
 pub mod config;
 pub mod engine;
+pub mod sim;
 pub mod telegram;
 
 use std::collections::{BTreeSet, HashMap};
